@@ -6,7 +6,7 @@ Dashboard web untuk sistem penyiraman dan pencahayaan tanaman otomatis berbasis 
 
 ## Cara kerja
 
-- NodeMCU mengirim data sensor tiap 2 detik ke broker MQTT publik `broker.hivemq.com` (port 1883).
+- NodeMCU mengirim data sensor tiap 2 detik ke broker MQTT publik `broker.hivemq.com.
 - Halaman ini terhubung ke broker yang sama lewat WebSocket aman (`wss://broker.hivemq.com:8884/mqtt`).
 - Topik data: `smartplant/tubes2026/data` — JSON `{"soil":41,"dark":false,"autoMode":true,"pump":false,"lamp":false}`
 - Topik kendali: `smartplant/tubes2026/control` — `MODE_AUTO`, `MODE_MANUAL`, `PUMP_ON`, `PUMP_OFF`, `LAMP_ON`, `LAMP_OFF`
@@ -24,5 +24,4 @@ Dashboard web untuk sistem penyiraman dan pencahayaan tanaman otomatis berbasis 
 npm start
 ```
 
-## Deploy otomatis ke Azure Web App
 
