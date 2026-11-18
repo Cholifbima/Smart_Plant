@@ -1,4 +1,4 @@
-# Smart Plant — Tugas Besar IoT 2026
+# Smart Plant
 
 Dashboard web untuk sistem penyiraman dan pencahayaan tanaman otomatis berbasis NodeMCU ESP8266.
 
