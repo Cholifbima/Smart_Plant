@@ -58,16 +58,55 @@ svg { display: block; }
 .chip--water { background: var(--color-water-soft); }
 
 /* keys */
-.key { min-height: 40px; padding: 0 var(--space-md); border: var(--rule-hair) solid var(--color-rule); border-radius: var(--radius-pill); background: var(--color-paper-2); color: var(--color-ink); font-size: var(--text-sm); font-weight: 500; cursor: pointer; box-shadow: inset 0 1px 0 var(--color-sheet), 0 1px 1px var(--color-rule); transition: background-color var(--dur-micro) var(--ease-out), transform var(--dur-micro) var(--ease-out); }
-.key:hover:not(:disabled):not([aria-pressed="true"]) { background: var(--color-paper-3); }
-.key:active:not(:disabled) { transform: translateY(1px); }
-.key[aria-pressed="true"] { background: var(--color-accent); color: var(--color-accent-ink); border-color: color-mix(in oklab, var(--color-accent) 78%, var(--color-ink)); box-shadow: inset 0 1px 0 color-mix(in oklab, var(--color-sheet) 32%, transparent), inset 0 -1px 0 color-mix(in oklab, var(--color-ink) 10%, transparent); }
-.key:disabled { cursor: not-allowed; color: var(--color-muted); box-shadow: none; }
-.key[aria-pressed="true"]:disabled { background: var(--color-accent-soft); border-color: var(--color-rule); color: var(--color-ink-2); }
-.key.is-pending { animation: pending 700ms var(--ease-out) infinite alternate; }
-@keyframes pending { to { opacity: 0.45; } }
-.seg { display: flex; gap: var(--space-2xs); }
-.seg .key { flex: 1; }
+.key {
+  min-height: 40px;
+  padding: 0 var(--space-md);
+  white-space: nowrap;
+  border: var(--rule-hair) solid var(--color-rule);
+  border-radius: var(--radius-pill);
+  background: var(--color-paper-2);
+  color: var(--color-ink);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 var(--color-sheet), 0 1px 1px var(--color-rule);
+  transition: background-color var(--dur-micro) var(--ease-out), transform var(--dur-micro) var(--ease-out);
+}
+.key:hover:not(:disabled):not([aria-pressed="true"]) {
+  background: var(--color-paper-3);
+}
+.key:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.key[aria-pressed="true"] {
+  background: var(--color-accent);
+  color: var(--color-accent-ink);
+  border-color: color-mix(in oklab, var(--color-accent) 78%, var(--color-ink));
+  box-shadow: inset 0 1px 0 color-mix(in oklab, var(--color-sheet) 32%, transparent), inset 0 -1px 0 color-mix(in oklab, var(--color-ink) 10%, transparent);
+}
+.key:disabled {
+  cursor: not-allowed;
+  color: var(--color-muted);
+  box-shadow: none;
+}
+.key[aria-pressed="true"]:disabled {
+  background: var(--color-accent-soft);
+  border-color: var(--color-rule);
+  color: var(--color-ink-2);
+}
+.key.is-pending {
+  animation: pending 700ms var(--ease-out) infinite alternate;
+}
+@keyframes pending {
+  to { opacity: 0.45; }
+}
+.seg {
+  display: flex;
+  gap: var(--space-2xs);
+}
+.seg .key {
+  flex: 1 1 0;
+}
 
 .band { background: var(--color-accent-soft); border-bottom: var(--rule-hair) solid var(--color-ink); font-size: var(--text-sm); }
 .band p { padding-block: var(--space-sm); }
@@ -162,14 +201,18 @@ main { display: grid; gap: var(--space-2xl); padding-block: var(--space-xl) var(
     <h1 class="wordmark">Smart Plant</h1>
     <div class="bar__state">
       <span class="chip" id="chipBroker">Broker menghubungkan</span>
-      <span class="chip" id="chipDevice">NodeMCU menunggu data</span>
+      <span class="chip" id="chipDevice">NodeMCU 1 menunggu data</span>
+      <div class="seg" role="group" aria-label="Pilih Node">
+        <button class="key" id="btnNode1" type="button" aria-pressed="true">Node 1</button>
+        <button class="key" id="btnNode2" type="button" aria-pressed="false">Node 2</button>
+      </div>
       <button class="key" id="btnSim" type="button" aria-pressed="false">Simulasi</button>
     </div>
   </div>
 </header>
 
 <div class="band" id="simbar" hidden>
-  <p class="container">Mode simulasi. Angka di halaman ini dibuat oleh browser, bukan dari sensor. Tekan Simulasi lagi untuk kembali ke data NodeMCU.</p>
+  <p class="container">Mode simulasi dual-node. Angka di halaman ini dibuat oleh browser, bukan dari sensor. Gunakan tombol Node 1 dan Node 2 untuk memantau serta mengendalikan kedua pot tanaman. Tekan Simulasi lagi untuk kembali ke data fisik NodeMCU.</p>
 </div>
 
 <main class="container">
@@ -268,10 +311,10 @@ main { display: grid; gap: var(--space-2xl); padding-block: var(--space-xl) var(
 
 <footer class="foot">
   <dl class="container">
-    <div><dt>Proyek</dt><dd>Tugas Besar IoT 2026</dd></div>
+    <div><dt>Proyek</dt><dd>Tugas Besar IoT 2026 (Dual Node)</dd></div>
     <div><dt>Broker</dt><dd class="num">broker.hivemq.com</dd></div>
-    <div><dt>Topik data</dt><dd class="num">smartplant/tubes2026/data</dd></div>
-    <div><dt>Topik kendali</dt><dd class="num">smartplant/tubes2026/control</dd></div>
+    <div><dt>Node 1 (Default / D6 terbuka)</dt><dd class="num">smartplant/tubes2026/data</dd></div>
+    <div><dt>Node 2 (Jumper D6 -> GND)</dt><dd class="num">smartplant/tubes2026/node2/data</dd></div>
   </dl>
 </footer>
 
@@ -283,8 +326,11 @@ main { display: grid; gap: var(--space-2xl); padding-block: var(--space-xl) var(
 
   // ====================== Konfigurasi ======================
   const BROKER = 'wss://broker.hivemq.com:8884/mqtt';
-  const TOPIC_DATA = 'smartplant/tubes2026/data';
-  const TOPIC_CONTROL = 'smartplant/tubes2026/control';
+  const TOPIC_DATA_NODE1_DEFAULT = 'smartplant/tubes2026/data';
+  const TOPIC_DATA_NODE1 = 'smartplant/tubes2026/node1/data';
+  const TOPIC_CONTROL_NODE1 = 'smartplant/tubes2026/control';
+  const TOPIC_DATA_NODE2 = 'smartplant/tubes2026/node2/data';
+  const TOPIC_CONTROL_NODE2 = 'smartplant/tubes2026/node2/control';
   const THRESHOLD = 30;          // sama dengan soilThreshold di firmware
   const OFFLINE_MS = 6000;       // firmware mengirim tiap 2 detik
   const WINDOW_MS = 5 * 60 * 1000;
@@ -293,12 +339,29 @@ main { display: grid; gap: var(--space-2xl); padding-block: var(--space-xl) var(
   const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const clock = (d = new Date()) => d.toLocaleTimeString('id-ID');
 
-  // ====================== Keadaan ======================
-  const state = { soil: null, dark: null, autoMode: null, pump: null, lamp: null };
-  let brokerUp = false, deviceUp = false, simOn = false;
-  let history = [];
-  let lastLive = 0, offlineTimer = null;
-  const stats = { msgs: 0, gap: null, count: 0, durMs: 0 };
+  // ====================== Keadaan Dual Node ======================
+  function createNodeStore(id, name) {
+    return {
+      id,
+      name,
+      state: { soil: null, dark: null, autoMode: null, pump: null, lamp: null },
+      deviceUp: false,
+      history: [],
+      lastLive: 0,
+      offlineTimer: null,
+      stats: { msgs: 0, gap: null, count: 0, durMs: 0 },
+      chipKind: '',
+      chipText: `NodeMCU ${id} menunggu data`,
+      readTimeText: 'belum ada'
+    };
+  }
+
+  const nodes = {
+    1: createNodeStore(1, 'Node 1'),
+    2: createNodeStore(2, 'Node 2')
+  };
+  let activeNode = 1;
+  let brokerUp = false, simOn = false;
 
   // ====================== Catatan kejadian ======================
   const logEl = $('log');
@@ -386,6 +449,7 @@ main { display: grid; gap: var(--space-2xl); padding-block: var(--space-xl) var(
     const B = 26 + strips * (stripH + stripGap) + 4;
     const pw = W - L - R, ph = H - T - B;
     const yOf = (v) => T + ph * (1 - v / 100);
+    const history = nodes[activeNode].history;
     const tEnd = history.length ? history[history.length - 1].t : Date.now();
     const tStart = tEnd - WINDOW_MS;
     const xOf = (t) => L + pw * (t - tStart) / WINDOW_MS;
@@ -434,7 +498,7 @@ main { display: grid; gap: var(--space-2xl); padding-block: var(--space-xl) var(
     if (!pts.length) {
       c.fillStyle = col.muted; c.textAlign = 'center'; c.textBaseline = 'middle';
       c.font = `16px ${css('--font-body')}`;
-      c.fillText(pw < 420 ? 'Menunggu data NodeMCU' : 'Grafik terisi setelah NodeMCU mengirim data', L + pw / 2, T + ph / 2);
+      c.fillText(pw < 420 ? `Menunggu data Node ${activeNode}` : `Grafik terisi setelah NodeMCU ${activeNode} mengirim data`, L + pw / 2, T + ph / 2);
       return;
     }
     // kurva kelembapan, terputus bila perangkat sempat offline
@@ -478,6 +542,14 @@ main { display: grid; gap: var(--space-2xl); padding-block: var(--space-xl) var(
   const press = (id, on) => $(id).setAttribute('aria-pressed', String(on));
 
   function render() {
+    const node = nodes[activeNode];
+    const state = node.state;
+    const stats = node.stats;
+    const deviceUp = node.deviceUp;
+
+    chip('chipDevice', node.chipKind, node.chipText);
+    $('readTime').textContent = node.readTimeText;
+
     const has = state.soil !== null;
     const canSend = (simOn || (brokerUp && deviceUp)) && has;
     const manual = state.autoMode === false;
@@ -493,21 +565,21 @@ main { display: grid; gap: var(--space-2xl); padding-block: var(--space-xl) var(
     $('lampValue').textContent = !has ? 'Belum ada' : state.lamp ? 'Menyala' : 'Mati';
     $('lightValue').textContent = state.dark === null ? 'Belum ada' : state.dark ? 'Gelap' : 'Terang';
 
-    $('hint').textContent = !has ? 'Kendali aktif setelah NodeMCU mengirim data.'
-      : !canSend ? 'NodeMCU tidak merespons, jadi perintah belum bisa dikirim.'
-      : manual ? 'Mode manual: pompa dan grow light mengikuti tombol di atas, sensor diabaikan.'
-      : `Mode otomatis: pompa menyala saat tanah di bawah ${THRESHOLD}%, grow light menyala saat gelap. Pompa menyiram 0,5 detik lalu menunggu air meresap. Pindah ke Manual untuk mengatur sendiri.`;
+    $('hint').textContent = !has ? `Kendali aktif setelah NodeMCU ${activeNode} mengirim data.`
+      : !canSend ? `NodeMCU ${activeNode} tidak merespons, jadi perintah belum bisa dikirim.`
+      : manual ? `Mode manual (Node ${activeNode}): pompa dan grow light mengikuti tombol di atas, sensor diabaikan.`
+      : `Mode otomatis (Node ${activeNode}): pompa menyala saat tanah di bawah ${THRESHOLD}%, grow light menyala saat gelap. Pompa menyiram 0,5 detik lalu menunggu air meresap. Pindah ke Manual untuk mengatur sendiri.`;
 
     if (has) {
       const dry = state.soil < THRESHOLD;
       chip('verdict', dry ? 'warn' : 'ok',
         dry ? `Kering, ${THRESHOLD - state.soil} poin di bawah batas siram`
           : state.soil > 70 ? 'Basah, air masih banyak' : 'Lembap, air cukup');
-    } else chip('verdict', '', 'Menunggu pembacaan pertama');
+    } else chip('verdict', '', `Menunggu pembacaan Node ${activeNode}`);
 
     $('stage').dataset.dark = String(state.dark === true);
-    chip('tagPump', state.pump ? 'water' : '', !has ? 'Pompa, belum ada data' : state.pump ? 'Pompa menyiram' : 'Pompa mati');
-    chip('tagLamp', state.lamp ? 'warn' : '', !has ? 'Grow light, belum ada data' : state.lamp ? 'Grow light menyala' : 'Grow light mati');
+    chip('tagPump', state.pump ? 'water' : '', !has ? `Pompa Node ${activeNode}, belum ada data` : state.pump ? `Pompa Node ${activeNode} menyiram` : `Pompa Node ${activeNode} mati`);
+    chip('tagLamp', state.lamp ? 'warn' : '', !has ? `Grow light Node ${activeNode}, belum ada data` : state.lamp ? `Grow light Node ${activeNode} menyala` : `Grow light Node ${activeNode} mati`);
 
     $('stMsgs').textContent = stats.msgs;
     $('stGap').textContent = (stats.gap === null ? '0' : (stats.gap / 1000).toFixed(1).replace('.', ',')) + ' dtk';
@@ -516,57 +588,82 @@ main { display: grid; gap: var(--space-2xl); padding-block: var(--space-xl) var(
   }
 
   // ====================== Data masuk ======================
-  function handleData(d, retained) {
+  function handleData(nodeId, d, retained) {
     if (!d || typeof d.soil !== 'number') return;
+    const node = nodes[nodeId];
+    if (!node) return;
     const now = Date.now();
     const next = {
       soil: Math.max(0, Math.min(100, Math.round(d.soil))),
       dark: !!d.dark, autoMode: !!d.autoMode, pump: !!d.pump, lamp: !!d.lamp
     };
-    const prev = { ...state };
+    const prev = { ...node.state };
     const first = prev.soil === null;
-    Object.assign(state, next);
-    setGauge(state.soil);
+    Object.assign(node.state, next);
+
+    if (nodeId === activeNode) {
+      setGauge(node.state.soil);
+    }
 
     if (retained) {
       // Pesan tersimpan di broker: keadaan terakhir, belum tentu perangkat sedang menyala.
-      if (!deviceUp) { chip('chipDevice', '', 'NodeMCU belum aktif, ini data terakhir'); $('readTime').textContent = 'data tersimpan'; }
-      render(); return;
+      if (!node.deviceUp) {
+        node.chipKind = '';
+        node.chipText = `NodeMCU ${nodeId} belum aktif, ini data terakhir`;
+        node.readTimeText = 'data tersimpan';
+      }
+      if (nodeId === activeNode) render();
+      return;
     }
 
-    if (!deviceUp) { deviceUp = true; log(simOn ? 'Simulasi mulai mengirim data' : 'NodeMCU online'); }
-    chip('chipDevice', simOn ? 'warn' : 'ok', simOn ? 'Simulasi berjalan' : 'NodeMCU online');
-    $('readTime').textContent = clock();
-    clearTimeout(offlineTimer);
-    offlineTimer = setTimeout(() => {
-      deviceUp = false;
-      chip('chipDevice', 'warn', 'NodeMCU offline, tidak ada data 6 detik');
-      log('NodeMCU offline');
-      render();
+    if (!node.deviceUp) {
+      node.deviceUp = true;
+      node.chipKind = simOn ? 'warn' : 'ok';
+      node.chipText = simOn ? `Simulasi Node ${nodeId} berjalan` : `NodeMCU ${nodeId} online`;
+      log(simOn ? `Simulasi Node ${nodeId} mulai mengirim data` : `NodeMCU ${nodeId} online`);
+    } else {
+      node.chipKind = simOn ? 'warn' : 'ok';
+      node.chipText = simOn ? `Simulasi Node ${nodeId} berjalan` : `NodeMCU ${nodeId} online`;
+    }
+
+    node.readTimeText = clock();
+    clearTimeout(node.offlineTimer);
+    node.offlineTimer = setTimeout(() => {
+      node.deviceUp = false;
+      node.chipKind = 'warn';
+      node.chipText = `NodeMCU ${nodeId} offline, tidak ada data 6 detik`;
+      log(`NodeMCU ${nodeId} offline`);
+      if (nodeId === activeNode) render();
     }, OFFLINE_MS);
 
-    stats.msgs++;
-    if (lastLive) {
-      const gap = now - lastLive;
-      stats.gap = gap;
-      if (prev.pump && gap < OFFLINE_MS) stats.durMs += gap;
+    node.stats.msgs++;
+    if (node.lastLive) {
+      const gap = now - node.lastLive;
+      node.stats.gap = gap;
+      if (prev.pump && gap < OFFLINE_MS) node.stats.durMs += gap;
     }
-    lastLive = now;
+    node.lastLive = now;
 
     if (!first) {
-      if (prev.autoMode !== state.autoMode) log('Mode berubah ke ' + (state.autoMode ? 'Otomatis' : 'Manual'));
-      if (prev.pump !== state.pump) log(state.pump ? `Pompa menyala, tanah ${state.soil}%` : `Pompa mati, tanah ${state.soil}%`);
-      if (prev.lamp !== state.lamp) log(state.lamp ? 'Grow light menyala' : 'Grow light mati');
-      if (prev.dark !== state.dark) log(state.dark ? 'Sensor cahaya membaca gelap' : 'Sensor cahaya membaca terang');
+      if (prev.autoMode !== node.state.autoMode) log(`[Node ${nodeId}] Mode berubah ke ` + (node.state.autoMode ? 'Otomatis' : 'Manual'));
+      if (prev.pump !== node.state.pump) log(`[Node ${nodeId}] ` + (node.state.pump ? `Pompa menyala, tanah ${node.state.soil}%` : `Pompa mati, tanah ${node.state.soil}%`));
+      if (prev.lamp !== node.state.lamp) log(`[Node ${nodeId}] ` + (node.state.lamp ? 'Grow light menyala' : 'Grow light mati'));
+      if (prev.dark !== node.state.dark) log(`[Node ${nodeId}] ` + (node.state.dark ? 'Sensor cahaya membaca gelap' : 'Sensor cahaya membaca terang'));
     }
-    if (state.pump && (first || !prev.pump)) stats.count++;
-    if (prev.pump !== state.pump || first) setPending(['pumpOn', 'pumpOff'], false);
-    if (prev.lamp !== state.lamp || first) setPending(['lampOn', 'lampOff'], false);
-    if (prev.autoMode !== state.autoMode || first) setPending(['btnAuto', 'btnManual'], false);
+    if (node.state.pump && (first || !prev.pump)) node.stats.count++;
+    if (nodeId === activeNode) {
+      if (prev.pump !== node.state.pump || first) setPending(['pumpOn', 'pumpOff'], false);
+      if (prev.lamp !== node.state.lamp || first) setPending(['lampOn', 'lampOff'], false);
+      if (prev.autoMode !== node.state.autoMode || first) setPending(['btnAuto', 'btnManual'], false);
+    }
 
-    history.push({ t: now, ...next });
-    while (history.length && history[0].t < now - WINDOW_MS - 4000) history.shift();
-    render(); drawChart();
+    node.history.push({ t: now, ...next });
+    while (node.history.length && node.history[0].t < now - WINDOW_MS - 4000) node.history.shift();
+
+    if (nodeId === activeNode) {
+      render();
+      drawChart();
+    }
   }
 
   // ====================== MQTT ======================
@@ -579,95 +676,164 @@ main { display: grid; gap: var(--space-2xl); padding-block: var(--space-xl) var(
     });
     client.on('connect', () => {
       brokerUp = true; chip('chipBroker', 'ok', 'Broker terhubung');
-      client.subscribe(TOPIC_DATA);
+      client.subscribe(TOPIC_DATA_NODE1_DEFAULT);
+      client.subscribe(TOPIC_DATA_NODE1);
+      client.subscribe(TOPIC_DATA_NODE2);
       render();
     });
     client.on('reconnect', () => chip('chipBroker', '', 'Broker menyambung ulang'));
     client.on('close', () => { brokerUp = false; chip('chipBroker', 'warn', 'Broker terputus'); render(); });
     client.on('error', () => chip('chipBroker', 'warn', 'Broker gagal terhubung'));
     client.on('message', (topic, payload, packet) => {
-      if (simOn || topic !== TOPIC_DATA) return;
-      try { handleData(JSON.parse(payload.toString()), !!packet.retain); }
+      if (simOn) return;
+      let targetNode = null;
+      if (topic === TOPIC_DATA_NODE1_DEFAULT || topic === TOPIC_DATA_NODE1) targetNode = 1;
+      else if (topic === TOPIC_DATA_NODE2) targetNode = 2;
+      if (!targetNode) return;
+      try { handleData(targetNode, JSON.parse(payload.toString()), !!packet.retain); }
       catch (e) { console.error('JSON tidak terbaca:', e); }
     });
   }
 
   function send(cmd, pendingId) {
     if (pendingId) setPending(pendingId, true);
-    log('Perintah dikirim: ' + cmd);
-    if (simOn) { sim.command(cmd); return; }
-    if (client && brokerUp) client.publish(TOPIC_CONTROL, cmd);
+    log(`[Node ${activeNode}] Perintah dikirim: ` + cmd);
+    if (simOn) { sim.command(activeNode, cmd); return; }
+    const topic = (activeNode === 1) ? TOPIC_CONTROL_NODE1 : TOPIC_CONTROL_NODE2;
+    if (client && brokerUp) client.publish(topic, cmd);
   }
-  $('btnAuto').addEventListener('click', () => { if (state.autoMode !== true) send('MODE_AUTO', 'btnAuto'); });
-  $('btnManual').addEventListener('click', () => { if (state.autoMode !== false) send('MODE_MANUAL', 'btnManual'); });
-  $('pumpOn').addEventListener('click', () => { if (!state.pump) send('PUMP_ON', 'pumpOn'); });
-  $('pumpOff').addEventListener('click', () => { if (state.pump) send('PUMP_OFF', 'pumpOff'); });
-  $('lampOn').addEventListener('click', () => { if (!state.lamp) send('LAMP_ON', 'lampOn'); });
-  $('lampOff').addEventListener('click', () => { if (state.lamp) send('LAMP_OFF', 'lampOff'); });
+  $('btnAuto').addEventListener('click', () => { if (nodes[activeNode].state.autoMode !== true) send('MODE_AUTO', 'btnAuto'); });
+  $('btnManual').addEventListener('click', () => { if (nodes[activeNode].state.autoMode !== false) send('MODE_MANUAL', 'btnManual'); });
+  $('pumpOn').addEventListener('click', () => { if (!nodes[activeNode].state.pump) send('PUMP_ON', 'pumpOn'); });
+  $('pumpOff').addEventListener('click', () => { if (nodes[activeNode].state.pump) send('PUMP_OFF', 'pumpOff'); });
+  $('lampOn').addEventListener('click', () => { if (!nodes[activeNode].state.lamp) send('LAMP_ON', 'lampOn'); });
+  $('lampOff').addEventListener('click', () => { if (nodes[activeNode].state.lamp) send('LAMP_OFF', 'lampOff'); });
 
-  // ====================== Simulasi (meniru logika firmware) ======================
+  // ====================== Pemilih Node ======================
+  function switchNode(nodeId) {
+    if (activeNode === nodeId) return;
+    activeNode = nodeId;
+    press('btnNode1', activeNode === 1);
+    press('btnNode2', activeNode === 2);
+    const node = nodes[activeNode];
+    if (node.state.soil !== null) {
+      setGauge(node.state.soil);
+    } else {
+      gTarget = null;
+      gShown = 0;
+      gValue.setAttribute('opacity', 0);
+      gKnob.setAttribute('opacity', 0);
+      $('soilNum').textContent = '--';
+    }
+    render();
+    drawChart();
+  }
+  $('btnNode1').addEventListener('click', () => switchNode(1));
+  $('btnNode2').addEventListener('click', () => switchNode(2));
+
+  // ====================== Simulasi Dual-Node ======================
+  const createSimNode = (startSoil, isDarkDefault) => ({
+    soil: startSoil, dark: isDarkDefault, autoMode: true, pump: false, lamp: false, n: 0, pulsing: false, rested: 0
+  });
+
   const sim = {
-    s: null, timer: 0,
+    s: { 1: null, 2: null },
+    timer: 0,
+    pulse: { 1: null, 2: null },
     start() {
-      this.s = { soil: 36, dark: false, autoMode: true, pump: false, lamp: false, n: 0, pulsing: false, rested: 0 };
-      this.push();
+      this.s[1] = createSimNode(36, false);
+      this.s[2] = createSimNode(24, true); // Node 2 mulai dalam keadaan kering dan gelap
+      this.push(1);
+      this.push(2);
       this.timer = setInterval(() => this.tick(), 2000);
     },
-    stop() { clearInterval(this.timer); clearTimeout(this.pulse); },
-    logic() {
-      const s = this.s;
-      if (!s.autoMode) return;
+    stop() {
+      clearInterval(this.timer);
+      clearTimeout(this.pulse[1]);
+      clearTimeout(this.pulse[2]);
+    },
+    logic(id) {
+      const s = this.s[id];
+      if (!s || !s.autoMode) return;
       s.lamp = s.dark;
       if (s.pulsing) return;
       s.pump = false;
       if (Math.round(s.soil) < THRESHOLD && Date.now() - s.rested >= 10000) {
         s.pump = true; s.pulsing = true;
-        this.pulse = setTimeout(() => {
+        this.pulse[id] = setTimeout(() => {
           s.pulsing = false; s.pump = false; s.rested = Date.now();
-          s.soil = Math.min(100, s.soil + 6);
-          this.push();
+          s.soil = Math.min(100, s.soil + 7);
+          this.push(id);
         }, 500);
       }
     },
     tick() {
-      const s = this.s; s.n++;
-      s.soil = Math.max(0, Math.min(100, s.soil + (s.pump && !s.pulsing ? 4 : -1.3)));
-      s.dark = Math.floor(s.n / 14) % 2 === 1;
-      this.push();
+      for (const id of [1, 2]) {
+        const s = this.s[id];
+        if (!s) continue;
+        s.n++;
+        s.soil = Math.max(0, Math.min(100, s.soil + (s.pump && !s.pulsing ? 4 : -1.2)));
+        if (id === 1) s.dark = Math.floor(s.n / 14) % 2 === 1;
+        else s.dark = Math.floor((s.n + 7) / 14) % 2 === 1;
+        this.push(id);
+      }
     },
-    push() { this.logic(); const s = this.s; handleData({ soil: Math.round(s.soil), dark: s.dark, autoMode: s.autoMode, pump: s.pump, lamp: s.lamp }, false); },
-    command(cmd) {
-      const s = this.s;
+    push(id) {
+      this.logic(id);
+      const s = this.s[id];
+      if (!s) return;
+      handleData(id, { soil: Math.round(s.soil), dark: s.dark, autoMode: s.autoMode, pump: s.pump, lamp: s.lamp }, false);
+    },
+    command(id, cmd) {
+      const s = this.s[id];
+      if (!s) return;
       if (cmd === 'MODE_AUTO') s.autoMode = true;
-      else if (cmd === 'MODE_MANUAL') { s.autoMode = false; s.pulsing = false; clearTimeout(this.pulse); }
+      else if (cmd === 'MODE_MANUAL') { s.autoMode = false; s.pulsing = false; clearTimeout(this.pulse[id]); }
       else if (!s.autoMode) {
         if (cmd === 'PUMP_ON') s.pump = true;
         if (cmd === 'PUMP_OFF') s.pump = false;
         if (cmd === 'LAMP_ON') s.lamp = true;
         if (cmd === 'LAMP_OFF') s.lamp = false;
       }
-      this.push();
+      this.push(id);
     }
   };
+
   function resetSession() {
-    clearTimeout(offlineTimer);
-    Object.assign(state, { soil: null, dark: null, autoMode: null, pump: null, lamp: null });
-    history = []; lastLive = 0; deviceUp = false;
-    Object.assign(stats, { msgs: 0, gap: null, count: 0, durMs: 0 });
+    clearTimeout(nodes[1].offlineTimer);
+    clearTimeout(nodes[2].offlineTimer);
+    for (const id of [1, 2]) {
+      Object.assign(nodes[id].state, { soil: null, dark: null, autoMode: null, pump: null, lamp: null });
+      nodes[id].history = [];
+      nodes[id].lastLive = 0;
+      nodes[id].deviceUp = false;
+      Object.assign(nodes[id].stats, { msgs: 0, gap: null, count: 0, durMs: 0 });
+      nodes[id].chipKind = '';
+      nodes[id].chipText = `NodeMCU ${id} menunggu data`;
+      nodes[id].readTimeText = 'belum ada';
+    }
     gTarget = null; gShown = 0;
     gValue.setAttribute('opacity', 0); gKnob.setAttribute('opacity', 0);
     $('soilNum').textContent = '--';
     $('readTime').textContent = 'belum ada';
-    chip('chipDevice', '', 'NodeMCU menunggu data');
+    chip('chipDevice', '', `NodeMCU ${activeNode} menunggu data`);
     logEl.innerHTML = LOG_EMPTY;
   }
+
   function setSim(on) {
     simOn = on;
     press('btnSim', on);
     $('simbar').hidden = !on;
     sim.stop(); resetSession();
     if (on) sim.start();
-    else if (client && brokerUp) { client.unsubscribe(TOPIC_DATA); client.subscribe(TOPIC_DATA); }
+    else if (client && brokerUp) {
+      client.unsubscribe(TOPIC_DATA_NODE1_DEFAULT);
+      client.unsubscribe(TOPIC_DATA_NODE1);
+      client.unsubscribe(TOPIC_DATA_NODE2);
+      client.subscribe(TOPIC_DATA_NODE1_DEFAULT);
+      client.subscribe(TOPIC_DATA_NODE1);
+      client.subscribe(TOPIC_DATA_NODE2);
+    }
     render(); drawChart();
   }
   $('btnSim').addEventListener('click', () => setSim(!simOn));
@@ -829,10 +995,11 @@ main { display: grid; gap: var(--space-2xl); padding-block: var(--space-xl) var(
       requestAnimationFrame(frame);
       const dt = Math.min(0.05, (now - prevT) / 1000); prevT = now;
       const t = now / 1000, k = 1 - Math.exp(-dt * 2.2);
-      s.moist += ((state.soil === null ? 50 : state.soil) / 100 - s.moist) * k;
-      s.day += ((state.dark ? 0 : 1) - s.day) * k;
-      s.pump += ((state.pump ? 1 : 0) - s.pump) * (1 - Math.exp(-dt * 5));
-      s.lamp += ((state.lamp ? 1 : 0) - s.lamp) * (1 - Math.exp(-dt * 4));
+      const curState = nodes[activeNode].state;
+      s.moist += ((curState.soil === null ? 50 : curState.soil) / 100 - s.moist) * k;
+      s.day += ((curState.dark ? 0 : 1) - s.day) * k;
+      s.pump += ((curState.pump ? 1 : 0) - s.pump) * (1 - Math.exp(-dt * 5));
+      s.lamp += ((curState.lamp ? 1 : 0) - s.lamp) * (1 - Math.exp(-dt * 4));
 
       // siang / malam
       hemi.intensity = 0.2 + 0.42 * s.day;

@@ -8,7 +8,7 @@ const char* password      = "dkbso2829";     // Pastikan huruf besar dan kecil s
 const char* mqtt_server   = "broker.hivemq.com";
 const int   mqtt_port     = 1883;
 
-// Topik MQTT sesuai dengan index.html
+// Topik MQTT sesuai dengan index.html (Dinamis: Node 1 default, Node 2 jika jumper D6 ke GND)
 const char* topic_data    = "smartplant/tubes2026/data";
 const char* topic_control = "smartplant/tubes2026/control";
 
@@ -17,6 +17,7 @@ const char* topic_control = "smartplant/tubes2026/control";
 #define PIN_LDR  D5   // Pin DO Modul Sensor LDR ke D5 NodeMCU
 #define PIN_PUMP D1   // Pin IN1 Modul Relay Pompa ke D1 NodeMCU
 #define PIN_LAMP D2   // Pin IN2 Modul Relay Lampu ke D2 NodeMCU
+#define PIN_NODE_SELECT D6 // Jumper ke GND = Node 2; Tanpa Jumper (Terbuka/HIGH) = Node 1
 
 // Modul Relay 2-Channel bersifat Active LOW (LOW menyala, HIGH mati)
 #define RELAY_ON  LOW
@@ -186,6 +187,22 @@ void setup() {
   pinMode(PIN_LDR, INPUT);
   pinMode(PIN_PUMP, OUTPUT);
   pinMode(PIN_LAMP, OUTPUT);
+  pinMode(PIN_NODE_SELECT, INPUT_PULLUP);
+
+  // Periksa apakah pin D6 dihubungkan ke GND (Jumper Node 2)
+  if (digitalRead(PIN_NODE_SELECT) == LOW) {
+    topic_data    = "smartplant/tubes2026/node2/data";
+    topic_control = "smartplant/tubes2026/node2/control";
+    Serial.println("\n[NODE CONFIG] Perangkat aktif sebagai: NODE 2 (Jumper D6 terhubung ke GND)");
+  } else {
+    topic_data    = "smartplant/tubes2026/data";
+    topic_control = "smartplant/tubes2026/control";
+    Serial.println("\n[NODE CONFIG] Perangkat aktif sebagai: NODE 1 (Default / D6 terbuka)");
+  }
+  Serial.print("Topik Data: ");
+  Serial.println(topic_data);
+  Serial.print("Topik Control: ");
+  Serial.println(topic_control);
 
   // Matikan kedua relay saat awal menyala
   digitalWrite(PIN_PUMP, RELAY_OFF);
