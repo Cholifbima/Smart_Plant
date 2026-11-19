@@ -153,11 +153,6 @@ main { display: grid; gap: var(--space-2xl); padding-block: var(--space-xl) var(
 .cell__label { font-size: var(--text-xs); font-weight: 500; color: var(--color-muted); }
 .cell__value { font-family: var(--font-display); font-weight: var(--display-weight); font-size: var(--text-xl); letter-spacing: -0.02em; line-height: 1.1; }
 .cell__note { font-size: var(--text-xs); color: var(--color-muted); }
-.cell--wide { grid-column: 1 / -1; }
-.thr { display: flex; align-items: center; gap: var(--space-sm); }
-.thr input[type="range"] { flex: 1 1 auto; min-width: 0; accent-color: var(--color-accent); height: 40px; cursor: pointer; }
-.thr input[type="range"]:disabled { cursor: not-allowed; opacity: 0.5; }
-.thr output { min-width: 3.5ch; text-align: right; font-variant-numeric: tabular-nums; font-weight: 500; }
 .entry__foot { padding: var(--space-sm) var(--space-md); border-top: var(--rule-hair) solid var(--color-ink); font-size: var(--text-sm); color: var(--color-muted); }
 
 /* sections on the paper */
@@ -279,16 +274,6 @@ main { display: grid; gap: var(--space-2xl); padding-block: var(--space-xl) var(
             <button type="button" class="key" id="lampOn" aria-pressed="false" disabled>Nyala</button>
           </div>
         </div>
-        <div class="cell cell--wide">
-          <span class="cell__label">Batas siram otomatis</span>
-          <span class="cell__value" id="thrValue">30%</span>
-          <div class="thr">
-            <input type="range" id="thrInput" min="5" max="95" step="1" value="30" aria-label="Batas kelembapan tanah untuk menyiram" disabled>
-            <output id="thrOut" for="thrInput" class="num">30%</output>
-            <button type="button" class="key" id="thrSave" disabled>Simpan</button>
-          </div>
-          <span class="cell__note">Pompa menyiram saat tanah di bawah batas ini (Mode Otomatis). Disimpan di NodeMCU, tetap berlaku setelah restart.</span>
-        </div>
       </div>
 
       <p class="entry__foot" id="hint">Kendali aktif setelah NodeMCU mengirim data.</p>
@@ -378,7 +363,6 @@ main { display: grid; gap: var(--space-2xl); padding-block: var(--space-xl) var(
   };
   let activeNode = 1;
   const thr = () => nodes[activeNode].state.threshold;
-  let thrDirty = false;
   let brokerUp = false, simOn = false;
 
   // ====================== Catatan kejadian ======================
@@ -608,13 +592,8 @@ main { display: grid; gap: var(--space-2xl); padding-block: var(--space-xl) var(
           : state.soil > 70 ? 'Basah, air masih banyak' : 'Lembap, air cukup');
     } else chip('verdict', '', `Menunggu pembacaan Node ${activeNode}`);
 
-    // Batas siram: slider tidak ditimpa data masuk selama pengguna sedang menggesernya
+    // Batas siram di gauge dan grafik mengikuti nilai yang dikirim NodeMCU
     paintThreshold(state.threshold);
-    $('thrValue').textContent = state.threshold + '%';
-    if (!thrDirty) $('thrInput').value = state.threshold;
-    $('thrOut').textContent = $('thrInput').value + '%';
-    $('thrInput').disabled = !canSend;
-    $('thrSave').disabled = !canSend || Number($('thrInput').value) === state.threshold;
 
     $('stage').dataset.dark = String(state.dark === true);
     chip('tagPump', state.pump ? 'water' : '', !has ? `Pompa Node ${activeNode}, belum ada data` : state.pump ? `Pompa Node ${activeNode} menyiram` : `Pompa Node ${activeNode} mati`);
@@ -697,7 +676,6 @@ main { display: grid; gap: var(--space-2xl); padding-block: var(--space-xl) var(
       if (prev.pump !== node.state.pump || first) setPending(['pumpOn', 'pumpOff'], false);
       if (prev.lamp !== node.state.lamp || first) setPending(['lampOn', 'lampOff'], false);
       if (prev.autoMode !== node.state.autoMode || first) setPending(['btnAuto', 'btnManual'], false);
-      if (prev.threshold !== node.state.threshold || first) setPending('thrSave', false);
     }
 
     node.history.push({ t: now, ...next });
@@ -751,17 +729,6 @@ main { display: grid; gap: var(--space-2xl); padding-block: var(--space-xl) var(
   $('pumpOff').addEventListener('click', () => { if (nodes[activeNode].state.pump) send('PUMP_OFF', 'pumpOff'); });
   $('lampOn').addEventListener('click', () => { if (!nodes[activeNode].state.lamp) send('LAMP_ON', 'lampOn'); });
   $('lampOff').addEventListener('click', () => { if (nodes[activeNode].state.lamp) send('LAMP_OFF', 'lampOff'); });
-  $('thrInput').addEventListener('input', () => {
-    thrDirty = true;
-    $('thrOut').textContent = $('thrInput').value + '%';
-    $('thrSave').disabled = Number($('thrInput').value) === thr();
-  });
-  $('thrSave').addEventListener('click', () => {
-    const v = Math.max(THR_MIN, Math.min(THR_MAX, Math.round(Number($('thrInput').value))));
-    thrDirty = false;
-    if (v === thr()) { render(); return; }
-    send('THRESHOLD:' + v, 'thrSave');
-  });
 
   // ====================== Pemilih Node ======================
   function switchNode(nodeId) {
@@ -769,7 +736,6 @@ main { display: grid; gap: var(--space-2xl); padding-block: var(--space-xl) var(
     activeNode = nodeId;
     press('btnNode1', activeNode === 1);
     press('btnNode2', activeNode === 2);
-    thrDirty = false;
     const node = nodes[activeNode];
     if (node.state.soil !== null) {
       setGauge(node.state.soil);
