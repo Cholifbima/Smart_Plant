@@ -1,5 +1,6 @@
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
+#include <EEPROM.h>
 
 // 1. Konfigurasi Wi-Fi dan MQTT
 const char* ssid          = "Crescent";      // Pastikan Hotspot aktif dan mode 2.4 GHz
@@ -31,8 +32,17 @@ const char* topic_control = "smartplant/tubes2026/control";
 #define PUMP_PULSE_MS 500    // Lama pompa menyala tiap penyiraman (0,5 detik)
 #define PUMP_REST_MS  10000  // Jeda sebelum boleh menyiram lagi (10 detik)
 
+// Batas siram yang bisa diatur dari web, disimpan di EEPROM agar tetap ada setelah restart
+#define THRESHOLD_DEFAULT 30
+#define THRESHOLD_MIN     5
+#define THRESHOLD_MAX     95
+#define EEPROM_SIZE       8
+#define EEPROM_ADDR_MAGIC 0      // Penanda bahwa EEPROM sudah berisi nilai yang valid
+#define EEPROM_ADDR_THR   1
+#define EEPROM_MAGIC      0xA7
+
 // 3. Variabel Sistem
-int soilThreshold = 30;       // Batas kelembapan tanah di bawah 30 persen
+int soilThreshold = THRESHOLD_DEFAULT; // Batas kelembapan tanah (persen), bisa diubah dari web
 int soilMoisturePercent = 0;
 int soilRaw = 0;
 bool isDark = false;          // Status sensor cahaya LDR
@@ -52,6 +62,24 @@ WiFiClient espClient;
 PubSubClient client(espClient);
 
 void publishData();
+
+// Baca batas siram dari EEPROM; pakai nilai bawaan bila belum pernah disimpan
+void loadThreshold() {
+  EEPROM.begin(EEPROM_SIZE);
+  int saved = EEPROM.read(EEPROM_ADDR_THR);
+  if (EEPROM.read(EEPROM_ADDR_MAGIC) == EEPROM_MAGIC &&
+      saved >= THRESHOLD_MIN && saved <= THRESHOLD_MAX) {
+    soilThreshold = saved;
+  } else {
+    soilThreshold = THRESHOLD_DEFAULT;
+  }
+}
+
+void saveThreshold(int value) {
+  EEPROM.write(EEPROM_ADDR_MAGIC, EEPROM_MAGIC);
+  EEPROM.write(EEPROM_ADDR_THR, (uint8_t)value);
+  EEPROM.commit();
+}
 
 // 4. Baca Sensor dan Eksekusi Logika
 void readSensors() {
@@ -113,7 +141,8 @@ void publishData() {
   json += "\"dark\":" + String(isDark ? "true" : "false") + ",";
   json += "\"autoMode\":" + String(autoMode ? "true" : "false") + ",";
   json += "\"pump\":" + String(pumpState ? "true" : "false") + ",";
-  json += "\"lamp\":" + String(lampState ? "true" : "false");
+  json += "\"lamp\":" + String(lampState ? "true" : "false") + ",";
+  json += "\"threshold\":" + String(soilThreshold);
   json += "}";
 
   // Kirim data ke Cloud terlebih dahulu sebelum menggerakkan relay
@@ -138,7 +167,24 @@ void callback(char* topic, byte* payload, unsigned int length) {
   cmd.trim();
   Serial.println("Perintah dari Web: " + cmd);
 
-  if (cmd == "MODE_AUTO") {
+  if (cmd.startsWith("THRESHOLD:")) {
+    // Format: THRESHOLD:<angka 5-95>, berlaku di Mode Otomatis maupun Manual
+    String num = cmd.substring(10);
+    int value = num.toInt();
+    bool isNumber = num.length() > 0;
+    for (unsigned int i = 0; i < num.length(); i++) {
+      if (!isDigit(num[i])) isNumber = false;
+    }
+    if (isNumber && value >= THRESHOLD_MIN && value <= THRESHOLD_MAX) {
+      if (value != soilThreshold) {
+        soilThreshold = value;
+        saveThreshold(value);
+      }
+      Serial.println("Batas siram sekarang: " + String(soilThreshold) + "%");
+    } else {
+      Serial.println("Batas siram ditolak, harus angka 5 sampai 95");
+    }
+  } else if (cmd == "MODE_AUTO") {
     autoMode = true;
   } else if (cmd == "MODE_MANUAL") {
     autoMode = false;
@@ -188,6 +234,11 @@ void setup() {
   pinMode(PIN_PUMP, OUTPUT);
   pinMode(PIN_LAMP, OUTPUT);
   pinMode(PIN_NODE_SELECT, INPUT_PULLUP);
+
+  loadThreshold();
+  Serial.print("\nBatas siram tersimpan: ");
+  Serial.print(soilThreshold);
+  Serial.println("%");
 
   // Periksa apakah pin D6 dihubungkan ke GND (Jumper Node 2)
   if (digitalRead(PIN_NODE_SELECT) == LOW) {

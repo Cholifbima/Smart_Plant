@@ -153,6 +153,11 @@ main { display: grid; gap: var(--space-2xl); padding-block: var(--space-xl) var(
 .cell__label { font-size: var(--text-xs); font-weight: 500; color: var(--color-muted); }
 .cell__value { font-family: var(--font-display); font-weight: var(--display-weight); font-size: var(--text-xl); letter-spacing: -0.02em; line-height: 1.1; }
 .cell__note { font-size: var(--text-xs); color: var(--color-muted); }
+.cell--wide { grid-column: 1 / -1; }
+.thr { display: flex; align-items: center; gap: var(--space-sm); }
+.thr input[type="range"] { flex: 1 1 auto; min-width: 0; accent-color: var(--color-accent); height: 40px; cursor: pointer; }
+.thr input[type="range"]:disabled { cursor: not-allowed; opacity: 0.5; }
+.thr output { min-width: 3.5ch; text-align: right; font-variant-numeric: tabular-nums; font-weight: 500; }
 .entry__foot { padding: var(--space-sm) var(--space-md); border-top: var(--rule-hair) solid var(--color-ink); font-size: var(--text-sm); color: var(--color-muted); }
 
 /* sections on the paper */
@@ -274,6 +279,16 @@ main { display: grid; gap: var(--space-2xl); padding-block: var(--space-xl) var(
             <button type="button" class="key" id="lampOn" aria-pressed="false" disabled>Nyala</button>
           </div>
         </div>
+        <div class="cell cell--wide">
+          <span class="cell__label">Batas siram otomatis</span>
+          <span class="cell__value" id="thrValue">30%</span>
+          <div class="thr">
+            <input type="range" id="thrInput" min="5" max="95" step="1" value="30" aria-label="Batas kelembapan tanah untuk menyiram" disabled>
+            <output id="thrOut" for="thrInput" class="num">30%</output>
+            <button type="button" class="key" id="thrSave" disabled>Simpan</button>
+          </div>
+          <span class="cell__note">Pompa menyiram saat tanah di bawah batas ini (Mode Otomatis). Disimpan di NodeMCU, tetap berlaku setelah restart.</span>
+        </div>
       </div>
 
       <p class="entry__foot" id="hint">Kendali aktif setelah NodeMCU mengirim data.</p>
@@ -331,7 +346,8 @@ main { display: grid; gap: var(--space-2xl); padding-block: var(--space-xl) var(
   const TOPIC_CONTROL_NODE1 = 'smartplant/tubes2026/control';
   const TOPIC_DATA_NODE2 = 'smartplant/tubes2026/node2/data';
   const TOPIC_CONTROL_NODE2 = 'smartplant/tubes2026/node2/control';
-  const THRESHOLD = 30;          // sama dengan soilThreshold di firmware
+  const THRESHOLD_DEFAULT = 30;  // nilai awal soilThreshold di firmware
+  const THR_MIN = 5, THR_MAX = 95;
   const OFFLINE_MS = 6000;       // firmware mengirim tiap 2 detik
   const WINDOW_MS = 5 * 60 * 1000;
 
@@ -344,7 +360,7 @@ main { display: grid; gap: var(--space-2xl); padding-block: var(--space-xl) var(
     return {
       id,
       name,
-      state: { soil: null, dark: null, autoMode: null, pump: null, lamp: null },
+      state: { soil: null, dark: null, autoMode: null, pump: null, lamp: null, threshold: THRESHOLD_DEFAULT },
       deviceUp: false,
       history: [],
       lastLive: 0,
@@ -361,6 +377,8 @@ main { display: grid; gap: var(--space-2xl); padding-block: var(--space-xl) var(
     2: createNodeStore(2, 'Node 2')
   };
   let activeNode = 1;
+  const thr = () => nodes[activeNode].state.threshold;
+  let thrDirty = false;
   let brokerUp = false, simOn = false;
 
   // ====================== Catatan kejadian ======================
@@ -391,16 +409,13 @@ main { display: grid; gap: var(--space-2xl); padding-block: var(--space-xl) var(
     return `M${x1.toFixed(2)} ${y1.toFixed(2)}A${G.r} ${G.r} 0 ${large} 1 ${x2.toFixed(2)} ${y2.toFixed(2)}`;
   };
   (function buildGauge() {
-    let s = `<path class="g-track" d="${arc(0, 100)}"/><path class="g-dry" d="${arc(0, THRESHOLD)}"/>`;
+    let s = `<path class="g-track" d="${arc(0, 100)}"/><path class="g-dry" id="gDry" d=""/>`;
     s += `<path class="g-value" id="gValue" d="${arc(0, 100)}" pathLength="100" stroke-dasharray="0 100" opacity="0"/>`;
     for (let p = 0; p <= 100; p += 10) {
       const [x1, y1] = pt(p, G.r + 11), [x2, y2] = pt(p, G.r + (p % 50 === 0 ? 18 : 15));
       s += `<line class="g-tick" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/>`;
     }
-    const [tx1, ty1] = pt(THRESHOLD, G.r - 9), [tx2, ty2] = pt(THRESHOLD, G.r + 20);
-    s += `<line class="g-thr" x1="${tx1}" y1="${ty1}" x2="${tx2}" y2="${ty2}"/>`;
-    const [lx, ly] = pt(THRESHOLD, G.r + 26);
-    s += `<text class="g-label g-label--ink" x="${lx - 2}" y="${ly}" text-anchor="end">batas ${THRESHOLD}%</text>`;
+    s += `<g id="gThr"></g>`;
     const [zx, zy] = pt(0, G.r + 28), [hx, hy] = pt(100, G.r + 28);
     s += `<text class="g-label" x="${zx}" y="${zy + 4}" text-anchor="middle">0 kering</text>`;
     s += `<text class="g-label" x="${hx}" y="${hy + 4}" text-anchor="middle">100 basah</text>`;
@@ -408,6 +423,21 @@ main { display: grid; gap: var(--space-2xl); padding-block: var(--space-xl) var(
     $('gauge').innerHTML = s;
   })();
   const gValue = $('gValue'), gKnob = $('gKnob');
+  // Garis dan label batas siram digambar ulang setiap kali batasnya berubah
+  let thrPainted = null;
+  function paintThreshold(t) {
+    if (t === thrPainted) return;
+    thrPainted = t;
+    $('gDry').setAttribute('d', arc(0, t));
+    const [tx1, ty1] = pt(t, G.r - 9), [tx2, ty2] = pt(t, G.r + 20);
+    const [lx, ly] = pt(t, G.r + 26);
+    const anchor = t < 45 ? 'end' : t > 55 ? 'start' : 'middle';
+    const dx = anchor === 'end' ? -2 : anchor === 'start' ? 2 : 0;
+    const dy = anchor === 'middle' ? -4 : 0;
+    $('gThr').innerHTML = `<line class="g-thr" x1="${tx1}" y1="${ty1}" x2="${tx2}" y2="${ty2}"/>` +
+      `<text class="g-label g-label--ink" x="${lx + dx}" y="${ly + dy}" text-anchor="${anchor}">batas ${t}%</text>`;
+  }
+  paintThreshold(THRESHOLD_DEFAULT);
   let gShown = 0, gTarget = null, gRaf = 0;
   function paintGauge(v) {
     gValue.setAttribute('stroke-dasharray', `${v.toFixed(2)} 100`);
@@ -464,9 +494,10 @@ main { display: grid; gap: var(--space-2xl); padding-block: var(--space-xl) var(
     }
     // batas siram
     c.strokeStyle = col.accent; c.lineWidth = 1.5;
-    c.beginPath(); c.moveTo(L, yOf(THRESHOLD)); c.lineTo(L + pw, yOf(THRESHOLD)); c.stroke();
+    const T0 = thr();
+    c.beginPath(); c.moveTo(L, yOf(T0)); c.lineTo(L + pw, yOf(T0)); c.stroke();
     c.fillStyle = col.muted; c.textAlign = 'left'; c.font = words;
-    c.fillText('batas', L + pw + 8, yOf(THRESHOLD) + 0.5);
+    c.fillText('batas', L + pw + 8, yOf(T0) + 0.5);
 
     // sumbu waktu
     c.fillStyle = col.muted; c.textBaseline = 'top'; c.font = figures;
@@ -519,8 +550,8 @@ main { display: grid; gap: var(--space-2xl); padding-block: var(--space-xl) var(
     c.fillStyle = col.paper; c.strokeStyle = col.ink; c.lineWidth = 2;
     c.beginPath(); c.arc(xOf(last.t), yOf(last.soil), 4.5, 0, 7); c.fill(); c.stroke();
     c.fillStyle = col.ink; c.textAlign = 'left'; c.textBaseline = 'middle'; c.font = figures;
-    const near = Math.abs(yOf(last.soil) - yOf(THRESHOLD)) < 13;
-    c.fillText(last.soil + '%', L + pw + 8, near ? yOf(last.soil) + (last.soil >= THRESHOLD ? -14 : 14) : yOf(last.soil));
+    const near = Math.abs(yOf(last.soil) - yOf(T0)) < 13;
+    c.fillText(last.soil + '%', L + pw + 8, near ? yOf(last.soil) + (last.soil >= T0 ? -14 : 14) : yOf(last.soil));
   }
   new ResizeObserver(drawChart).observe(chartCv.parentElement);
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(drawChart);
@@ -568,14 +599,22 @@ main { display: grid; gap: var(--space-2xl); padding-block: var(--space-xl) var(
     $('hint').textContent = !has ? `Kendali aktif setelah NodeMCU ${activeNode} mengirim data.`
       : !canSend ? `NodeMCU ${activeNode} tidak merespons, jadi perintah belum bisa dikirim.`
       : manual ? `Mode manual (Node ${activeNode}): pompa dan grow light mengikuti tombol di atas, sensor diabaikan.`
-      : `Mode otomatis (Node ${activeNode}): pompa menyala saat tanah di bawah ${THRESHOLD}%, grow light menyala saat gelap. Pompa menyiram 0,5 detik lalu menunggu air meresap. Pindah ke Manual untuk mengatur sendiri.`;
+      : `Mode otomatis (Node ${activeNode}): pompa menyala saat tanah di bawah ${thr()}%, grow light menyala saat gelap. Pompa menyiram 0,5 detik lalu menunggu air meresap. Pindah ke Manual untuk mengatur sendiri.`;
 
     if (has) {
-      const dry = state.soil < THRESHOLD;
+      const dry = state.soil < state.threshold;
       chip('verdict', dry ? 'warn' : 'ok',
-        dry ? `Kering, ${THRESHOLD - state.soil} poin di bawah batas siram`
+        dry ? `Kering, ${state.threshold - state.soil} poin di bawah batas siram`
           : state.soil > 70 ? 'Basah, air masih banyak' : 'Lembap, air cukup');
     } else chip('verdict', '', `Menunggu pembacaan Node ${activeNode}`);
+
+    // Batas siram: slider tidak ditimpa data masuk selama pengguna sedang menggesernya
+    paintThreshold(state.threshold);
+    $('thrValue').textContent = state.threshold + '%';
+    if (!thrDirty) $('thrInput').value = state.threshold;
+    $('thrOut').textContent = $('thrInput').value + '%';
+    $('thrInput').disabled = !canSend;
+    $('thrSave').disabled = !canSend || Number($('thrInput').value) === state.threshold;
 
     $('stage').dataset.dark = String(state.dark === true);
     chip('tagPump', state.pump ? 'water' : '', !has ? `Pompa Node ${activeNode}, belum ada data` : state.pump ? `Pompa Node ${activeNode} menyiram` : `Pompa Node ${activeNode} mati`);
@@ -595,7 +634,9 @@ main { display: grid; gap: var(--space-2xl); padding-block: var(--space-xl) var(
     const now = Date.now();
     const next = {
       soil: Math.max(0, Math.min(100, Math.round(d.soil))),
-      dark: !!d.dark, autoMode: !!d.autoMode, pump: !!d.pump, lamp: !!d.lamp
+      dark: !!d.dark, autoMode: !!d.autoMode, pump: !!d.pump, lamp: !!d.lamp,
+      // Firmware lama belum mengirim threshold: pakai nilai bawaan 30
+      threshold: typeof d.threshold === 'number' ? Math.max(THR_MIN, Math.min(THR_MAX, Math.round(d.threshold))) : THRESHOLD_DEFAULT
     };
     const prev = { ...node.state };
     const first = prev.soil === null;
@@ -648,6 +689,7 @@ main { display: grid; gap: var(--space-2xl); padding-block: var(--space-xl) var(
       if (prev.autoMode !== node.state.autoMode) log(`[Node ${nodeId}] Mode berubah ke ` + (node.state.autoMode ? 'Otomatis' : 'Manual'));
       if (prev.pump !== node.state.pump) log(`[Node ${nodeId}] ` + (node.state.pump ? `Pompa menyala, tanah ${node.state.soil}%` : `Pompa mati, tanah ${node.state.soil}%`));
       if (prev.lamp !== node.state.lamp) log(`[Node ${nodeId}] ` + (node.state.lamp ? 'Grow light menyala' : 'Grow light mati'));
+      if (prev.threshold !== node.state.threshold) log(`[Node ${nodeId}] Batas siram diubah ke ${node.state.threshold}%`);
       if (prev.dark !== node.state.dark) log(`[Node ${nodeId}] ` + (node.state.dark ? 'Sensor cahaya membaca gelap' : 'Sensor cahaya membaca terang'));
     }
     if (node.state.pump && (first || !prev.pump)) node.stats.count++;
@@ -655,6 +697,7 @@ main { display: grid; gap: var(--space-2xl); padding-block: var(--space-xl) var(
       if (prev.pump !== node.state.pump || first) setPending(['pumpOn', 'pumpOff'], false);
       if (prev.lamp !== node.state.lamp || first) setPending(['lampOn', 'lampOff'], false);
       if (prev.autoMode !== node.state.autoMode || first) setPending(['btnAuto', 'btnManual'], false);
+      if (prev.threshold !== node.state.threshold || first) setPending('thrSave', false);
     }
 
     node.history.push({ t: now, ...next });
@@ -708,6 +751,17 @@ main { display: grid; gap: var(--space-2xl); padding-block: var(--space-xl) var(
   $('pumpOff').addEventListener('click', () => { if (nodes[activeNode].state.pump) send('PUMP_OFF', 'pumpOff'); });
   $('lampOn').addEventListener('click', () => { if (!nodes[activeNode].state.lamp) send('LAMP_ON', 'lampOn'); });
   $('lampOff').addEventListener('click', () => { if (nodes[activeNode].state.lamp) send('LAMP_OFF', 'lampOff'); });
+  $('thrInput').addEventListener('input', () => {
+    thrDirty = true;
+    $('thrOut').textContent = $('thrInput').value + '%';
+    $('thrSave').disabled = Number($('thrInput').value) === thr();
+  });
+  $('thrSave').addEventListener('click', () => {
+    const v = Math.max(THR_MIN, Math.min(THR_MAX, Math.round(Number($('thrInput').value))));
+    thrDirty = false;
+    if (v === thr()) { render(); return; }
+    send('THRESHOLD:' + v, 'thrSave');
+  });
 
   // ====================== Pemilih Node ======================
   function switchNode(nodeId) {
@@ -715,6 +769,7 @@ main { display: grid; gap: var(--space-2xl); padding-block: var(--space-xl) var(
     activeNode = nodeId;
     press('btnNode1', activeNode === 1);
     press('btnNode2', activeNode === 2);
+    thrDirty = false;
     const node = nodes[activeNode];
     if (node.state.soil !== null) {
       setGauge(node.state.soil);
@@ -733,7 +788,7 @@ main { display: grid; gap: var(--space-2xl); padding-block: var(--space-xl) var(
 
   // ====================== Simulasi Dual-Node ======================
   const createSimNode = (startSoil, isDarkDefault) => ({
-    soil: startSoil, dark: isDarkDefault, autoMode: true, pump: false, lamp: false, n: 0, pulsing: false, rested: 0
+    soil: startSoil, dark: isDarkDefault, autoMode: true, pump: false, lamp: false, threshold: THRESHOLD_DEFAULT, n: 0, pulsing: false, rested: 0
   });
 
   const sim = {
@@ -758,7 +813,7 @@ main { display: grid; gap: var(--space-2xl); padding-block: var(--space-xl) var(
       s.lamp = s.dark;
       if (s.pulsing) return;
       s.pump = false;
-      if (Math.round(s.soil) < THRESHOLD && Date.now() - s.rested >= 10000) {
+      if (Math.round(s.soil) < s.threshold && Date.now() - s.rested >= 10000) {
         s.pump = true; s.pulsing = true;
         this.pulse[id] = setTimeout(() => {
           s.pulsing = false; s.pump = false; s.rested = Date.now();
@@ -782,12 +837,16 @@ main { display: grid; gap: var(--space-2xl); padding-block: var(--space-xl) var(
       this.logic(id);
       const s = this.s[id];
       if (!s) return;
-      handleData(id, { soil: Math.round(s.soil), dark: s.dark, autoMode: s.autoMode, pump: s.pump, lamp: s.lamp }, false);
+      handleData(id, { soil: Math.round(s.soil), dark: s.dark, autoMode: s.autoMode, pump: s.pump, lamp: s.lamp, threshold: s.threshold }, false);
     },
     command(id, cmd) {
       const s = this.s[id];
       if (!s) return;
-      if (cmd === 'MODE_AUTO') s.autoMode = true;
+      if (cmd.startsWith('THRESHOLD:')) {
+        const v = parseInt(cmd.slice(10), 10);
+        if (v >= THR_MIN && v <= THR_MAX) s.threshold = v;
+      }
+      else if (cmd === 'MODE_AUTO') s.autoMode = true;
       else if (cmd === 'MODE_MANUAL') { s.autoMode = false; s.pulsing = false; clearTimeout(this.pulse[id]); }
       else if (!s.autoMode) {
         if (cmd === 'PUMP_ON') s.pump = true;
